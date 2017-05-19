@@ -7,12 +7,17 @@
 
 class TreeThread : public QThread
 {
+    Q_OBJECT
 public:
     TreeThread();
     ~TreeThread();
     void setServer(const QString& ip, const QString& port);
 protected:
     void run();
+
+signals:
+    void dataReady(const QMap<QString, QStringList>& ) ;
+
 private:
     rmi::ap * rmiClient_;
     QString ip_;

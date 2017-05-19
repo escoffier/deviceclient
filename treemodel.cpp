@@ -52,6 +52,7 @@
 #include <QDebug>
 #include "treeitem.h"
 #include "treemodel.h"
+#include "treethread.h"
 
 //! [0]
 TreeModel::TreeModel(const QStringList &headers, const QStringList &datas, QObject *parent)
@@ -357,7 +358,8 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
 
 void TreeModel::updateModelData(const QStringList &datas)
 {
-
+    TreeItem *centralServer =  rootItem_->child(0);
+   // centralServer
 }
 
 void TreeModel::setCentralServer(const QStringList &datas)
@@ -384,10 +386,11 @@ void TreeModel::setCentralServer(const QStringList &datas)
 
 void TreeModel::queryDevice(const QString &ip, const QString &port)
 {
-    if(queryThread_ == nullptr)
-    {
-        queryThread_ = new TreeThread;
-    }
+//    if(queryThread_ == nullptr)
+//    {
+//        queryThread_ = new TreeThread;
+//    }
+    queryThread_->setServer(ip, port);
 }
 
 TreeItem *TreeModel::rootItem() const

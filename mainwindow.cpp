@@ -79,6 +79,7 @@ void MainWindow::showServerDlg()
         server_.user_ = serverDlg->userEdit_->text();
         server_.password_ = serverDlg->pwdEdit_->text();
         treeModel_->setCentralServer(QStringList(tr(u8"192.168.2.12")));
+        treeModel_->queryDevice(server_.ip_, server_.port_);
     }
 }
 

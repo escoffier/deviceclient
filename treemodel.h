@@ -54,9 +54,11 @@
 #include <QAbstractItemModel>
 #include <QModelIndex>
 #include <QVariant>
+#include <QMap>
 
 class TreeItem;
 class TreeThread;
+
 //! [0]
 class TreeModel : public QAbstractItemModel
 {
@@ -101,12 +103,14 @@ public:
     void setCentralServer(const QStringList &datas);
     void queryDevice(const QString& ip, const QString& port);
     TreeItem *rootItem() const;
+
 private:
 
     TreeItem *getItem(const QModelIndex &index) const;
 
     TreeItem *rootItem_;
     TreeThread * queryThread_;
+    //;
 };
 //! [2]
 
