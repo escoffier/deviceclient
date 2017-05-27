@@ -38,6 +38,7 @@ public:
     QueryPage(QWidget *parent = 0);
     ~QueryPage();
     rmi::ap * getRmiClient();
+    void setCentralServer(const QString &ip, const QString &port);
 protected:
     void timerEvent( QTimerEvent * t);
 public:
@@ -66,7 +67,7 @@ private:
     int timerid_;
     rmi::ap *rmiClient_;
     QString serverIp_;
-    int serverPort_;
+    QString serverPort_;
     int currentDeviceType_;
     QueryThread * queryThread_;
 };

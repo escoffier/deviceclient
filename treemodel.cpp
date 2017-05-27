@@ -53,6 +53,7 @@
 #include "treeitem.h"
 #include "treemodel.h"
 #include "treethread.h"
+#include <QMetaType>
 
 //! [0]
 TreeModel::TreeModel(const QStringList &headers, const QStringList &datas, QObject *parent)
@@ -61,9 +62,13 @@ TreeModel::TreeModel(const QStringList &headers, const QStringList &datas, QObje
     QVector<QVariant> rootData;
     foreach (QString header, headers)
         rootData << header;
-
+    qRegisterMetaType<QMap<QString, QStringList> >("DataMap");
     rootItem_ = new TreeItem(rootData);
+    queryThread_ = new TreeThread;
+    //connect(queryThread_, SIGNAL(dataReady(const QMap<QString, QStringList>&)), this, SLOT(updateModelData(const QMap<QString, QStringList>&)));
+    connect(queryThread_, SIGNAL(dataReady(const DataMap&)), this, SLOT(updateModelData(const DataMap&)));
 
+    serverIcon_ = new QIcon(":/images/server.png");
 //    if(headers.size() == datas.size())
 //    {
 //        QVector<QVariant> serverData;
@@ -89,6 +94,7 @@ TreeModel::TreeModel(const QStringList &headers, const QStringList &datas, QObje
 TreeModel::~TreeModel()
 {
     delete rootItem_;
+    delete queryThread_;
 }
 //! [1]
 
@@ -105,10 +111,15 @@ QVariant TreeModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
+    TreeItem *item = getItem(index);
+    if( role == Qt::DecorationRole && (item->type() == TreeItem::ESERVER))
+        return *serverIcon_;
+
     if (role != Qt::DisplayRole && role != Qt::EditRole)
         return QVariant();
 
-    TreeItem *item = getItem(index);
+
+    //TreeItem *item = getItem(index);
     //qDebug()<<"data: "<<item->data(index.column());
     return item->data(index.column());
 }
@@ -358,8 +369,46 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
 
 void TreeModel::updateModelData(const QStringList &datas)
 {
-    TreeItem *centralServer =  rootItem_->child(0);
-   // centralServer
+    //TreeItem *centralServer =  rootItem_->child(0);
+    // centralServer
+}
+
+void TreeModel::updateModelData(const QMap<QString, QStringList> &datas)
+{
+    beginResetModel();
+    TreeItem * item = rootItem_->child(rootItem_->childCount() -1 );
+    if(item->childCount() != 0)
+    {
+        for(int i = 0; i< item->childCount(); ++i)
+        {
+            item->removeChildren(i, 1);
+        }
+    }
+    item->insertChildren(0, 2, rootItem_->columnCount());
+    item->child(0)->setData(TreeItem::ESERVERROOT, 0, tr("server"));
+    item->child(1)->setData(TreeItem::ESWTICHROOT, 0, tr("switch"));
+
+//    for(int i = 0; i < rootItem_->columnCount();++i)
+//    {
+//        serverData<<datas.at(i);
+//        rootItem_->child(rootItem_->childCount() -1)->setData(TreeItem::EROOT,i, serverData[i]);
+//    }
+    TreeItem * serverItem = item->child(0);
+    serverItem->insertChildren(0, datas[tr("server")].size(), rootItem_->columnCount());
+    int index = 0;
+    QString server;
+    foreach (server, datas[tr("server")] ) {
+        serverItem->child(index++)->setData(TreeItem::ESERVER, 0, server);
+    }
+
+    index = 0;
+    TreeItem *switchItem = item->child(1);
+    switchItem->insertChildren(0, datas[tr("switch")].size(), rootItem_->columnCount());
+    QString swich;
+    foreach(swich, datas[tr("switch")]){
+        switchItem->child(index++)->setData(TreeItem::ESWTICH, 0, swich);
+    }
+    endResetModel();
 }
 
 void TreeModel::setCentralServer(const QStringList &datas)
@@ -386,9 +435,13 @@ void TreeModel::setCentralServer(const QStringList &datas)
 
 void TreeModel::queryDevice(const QString &ip, const QString &port)
 {
-//    if(queryThread_ == nullptr)
+
+//    if(rootItem_->childCount() != 0)
 //    {
-//        queryThread_ = new TreeThread;
+//        for(int i = 0; i< rootItem_->childCount(); ++i)
+//        {
+//         rootItem_->removeChildren(i, 1);
+//        }
 //    }
     queryThread_->setServer(ip, port);
 }

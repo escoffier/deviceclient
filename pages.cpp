@@ -13,7 +13,7 @@ ControlPage::ControlPage(QWidget *parent)
     setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
 
 
-     button_ = new QPushButton(tr(u8"设备控制111"), this);
+     button_ = new QPushButton(tr(u8"设备控制"), this);
 //    QGroupBox *configGroup = new QGroupBox(tr("Server configuration"));
 
 //    QLabel *serverLabel = new QLabel(tr("Server:"));
@@ -129,9 +129,9 @@ QueryPage::QueryPage(QWidget *parent)
     processWidget_->setAlternatingRowColors(true);
     processWidget_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-    addTab(userWidget_, "userWidget");
-    addTab(capWidget_, "capability");
-    addTab(processWidget_, "processWidget");
+    addTab(userWidget_,  u8"用户");
+    addTab(capWidget_, u8"性能");
+    addTab(processWidget_, u8"进程");
 
     QStringList switchHeaders;
     switchHeaders << tr("In") << tr("Out") << tr("Loss")<< tr("Error");
@@ -160,6 +160,13 @@ QueryPage::~QueryPage()
 rmi::ap *QueryPage::getRmiClient()
 {
     return rmiClient_;
+}
+
+void QueryPage::setCentralServer(const QString &ip, const QString &port)
+{
+    serverIp_ = ip;
+    serverPort_ = port;
+    queryThread_->setServer(ip, port);
 }
 
 void QueryPage::queryData(QTreeWidgetItem *item, int column)
@@ -241,14 +248,30 @@ void QueryPage::queryData(QModelIndex index)
 {
     TreeItem *item = static_cast<TreeItem*>(index.internalPointer());
 
+    qDebug()<<"Item type: "<<item->type()<<"-----"<<item->data(0);
+    if(item->type() == TreeItem::ESERVER || item->type() == TreeItem::ESWTICH )
+        queryThread_->setDeivce(item->data(0).toString(), item->type());
 
-//    if(!queryThread_)
-//    {
-//        queryThread_ = new QueryThread;
-//    }
 
-     qDebug()<<"Item type: "<<item->type()<<"-----"<<item->data(0);
-    queryThread_->setDeivce(item->data(0).toString(), item->type());
+    if(item->type() == TreeItem::ESERVER)
+    {
+        if(count() == 1)
+        {
+            clear();
+        }
+        addTab(userWidget_, u8"用户");
+        addTab(capWidget_, u8"性能");
+        addTab(processWidget_, u8"进程");
+
+    }
+    else if(item->type() == TreeItem::ESWTICH)
+    {
+        if(count() == 3)
+        {
+            clear();
+        }
+        addTab(switchWidget_ ,u8"交换机");
+    }
 #if 0
     if( ( (item->type() == TreeItem::ESERVER) || (item->type() == TreeItem::ESWTICH) )
         && (timerid_ == 0) )

@@ -80,6 +80,7 @@ void MainWindow::showServerDlg()
         server_.password_ = serverDlg->pwdEdit_->text();
         treeModel_->setCentralServer(QStringList(tr(u8"192.168.2.12")));
         treeModel_->queryDevice(server_.ip_, server_.port_);
+        queryPage_->setCentralServer(server_.ip_, server_.port_);
     }
 }
 
@@ -93,6 +94,9 @@ void MainWindow::showServerDlg(bool checked)
         server_.user_ = serverDlg->userEdit_->text();
         server_.password_ = serverDlg->pwdEdit_->text();
         treeModel_->setCentralServer(QStringList(tr(u8"192.168.2.12")));
+        //treeModel_->queryDevice(server_.ip_, server_.port_);
+        treeModel_->queryDevice(tr(u8"192.168.2.12"), tr("10001"));
+        queryPage_->setCentralServer(server_.ip_, server_.port_);
     }
 }
 
@@ -133,7 +137,7 @@ void MainWindow::queryResource(bool checked)
     //if(checked)
     {
     //QTreeWidgetItem* currentItem = treekWidget_->currentItem();
-        QModelIndex curIndex = treekView_->currentIndex();
+        QModelIndex curIndex = treeView_->currentIndex();
         if(curIndex.isValid() )
         {
             TreeItem *item = static_cast<TreeItem*>(curIndex.internalPointer());
@@ -182,7 +186,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(newAct, SIGNAL(triggered()), signalMapper,SLOT(map()));
     connect(signalMapper, SIGNAL(mapped(int)),this, SLOT(changePage(int)));
-#endif
+
    /////////////////////////////////////////////////
     //QWidget *btnWidget = new QWidget(this);
     QFrame *btnWidget = new QFrame(this);
@@ -226,6 +230,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QHBoxLayout *upLayout = new QHBoxLayout;
     upLayout->addWidget(btnWidget);
+    #endif
     ////////////////////////////////////////////////////
 
 //   QPushButton *ButtonCtrl = new QPushButton(tr("设备监控"));
@@ -266,65 +271,35 @@ MainWindow::MainWindow(QWidget *parent)
    controlPage_ = new ControlPage(this);
    pagesWidget->addWidget(queryPage_);
    pagesWidget->addWidget(controlPage_);
-   //pagesWidget->addWidget(new ControlPage);
-   //pagesWidget->addWidget(new UpdatePage);
-
 
    createTreeView();
-//   treekView_ = new QTreeView;
-//   TreeModel *model = new TreeModel(QStringList(tr(u8"设备列表")), tr(""), this);
-//   model->setupModelData(QStringList(""), 0);
-//   treekView_->setModel(model);
-//   connect(treekView_, SIGNAL(doubleClicked(QModelIndex)),this, SLOT());
-#if 0
-   treekWidget_ = new QTreeWidget;
-   treeHeader_ = new QTreeWidgetItem(QStringList(u8"192.168.2.1"), QueryPage::EROOT );
-   treekWidget_->setHeaderItem(treeHeader_);
-   treekWidget_->setHeaderLabel(u8"设备列表");
 
-   QTreeWidgetItem *sever = new QTreeWidgetItem(QStringList(u8"服务器"), QueryPage::ESERVERROOT );
-   QTreeWidgetItem *child1 = new QTreeWidgetItem(QStringList("device1"), QueryPage::ESERVER);
-   sever->addChild(child1);
 
-   QTreeWidgetItem *switchs = new QTreeWidgetItem(QStringList(u8"交换机"), QueryPage::ESWTICHROOT);
-   QTreeWidgetItem *switch1 = new QTreeWidgetItem(QStringList("switch1"), ResourcePage::ESWTICH);
-   switchs->addChild(switch1);
-   treeHeader_->addChild(sever);
-   treeHeader_->addChild(switchs);
-   treekWidget_->addTopLevelItem(treeHeader_);
-//   treekWidget_->addTopLevelItem(sever);
-//   treekWidget_->addTopLevelItem(switchs);
+   QHBoxLayout *widgetslayout = new QHBoxLayout;
+   widgetslayout->addWidget( treeView_);
+   //widgetslayout->addStretch(1);
+   widgetslayout->addWidget( pagesWidget);
+   //widgetslayout->setStretchFactor(treekWidget_, 0);
+   widgetslayout->setStretchFactor(pagesWidget, 1);
 
-    connect(treekWidget_, SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)), this,SLOT(showResorce(QTreeWidgetItem*,int)));
-   //connect(treekWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)), queryPage_,SLOT(queryData(QTreeWidgetItem*,int)) );
-    //connect(treeHeader_, SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)), this,SLOT(showResorce(QTreeWidgetItem*,int)));
-#endif
+   QVBoxLayout *mainLayout = new QVBoxLayout;
+   // mainLayout->addLayout(upLayout);
 
-    QHBoxLayout *widgetslayout = new QHBoxLayout;
-    widgetslayout->addWidget( treekView_);
-    //widgetslayout->addStretch(1);
-    widgetslayout->addWidget( pagesWidget);
-    widgetslayout->setStretchFactor(treekWidget_, 0);
-    widgetslayout->setStretchFactor(pagesWidget, 1);
+   // mainLayout->addSpacing(2);
+   mainLayout->addLayout(widgetslayout);
+   //setLayout(mainLayout);
+   QWidget* widget = new QWidget(this);
+   widget->setLayout(mainLayout);
 
-    QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addLayout(upLayout);
-    //mainLayout->addStretch(1);
-    mainLayout->addSpacing(2);
-    mainLayout->addLayout(widgetslayout);
-    //setLayout(mainLayout);
-    QWidget* widget = new QWidget(this);
-    widget->setLayout(mainLayout);
-
-    this->setCentralWidget(widget);
-    statusbarLabel_ = new QLabel;
-    statusBar()->setStyleSheet(QString("QStatusBar::item{border: 0px}"));
-    statusBar()->addWidget(statusbarLabel_);
+   this->setCentralWidget(widget);
+   statusbarLabel_ = new QLabel;
+   statusBar()->setStyleSheet(QString("QStatusBar::item{border: 0px}"));
+   statusBar()->addWidget(statusbarLabel_);
 }
 
 MainWindow::~MainWindow()
 {
-
+ delete treeView_;
 }
 
 void MainWindow::initWinSock()
@@ -368,6 +343,7 @@ void MainWindow::createToolBars()
     toolBar_->addAction(controlAction_);
     toolBar_->addAction(configureAction_);
      toolBar_->addAction(alarmAction_);
+
 }
 
 void MainWindow::createActions()
@@ -396,12 +372,13 @@ void MainWindow::createActions()
 
 void MainWindow::createTreeView()
 {
-    treekView_ = new QTreeView;
+    treeView_ = new QTreeView;
     treeModel_ = new TreeModel(QStringList(tr(u8"设备列表")), QStringList(/*tr(u8"192.168.2.12")*/), this);
     //treeModel_->setupModelData(QStringList(""), 0);
-    treekView_->setModel(treeModel_);
+    treeView_->setModel(treeModel_);
+
     //treeModel_->setCentralServer(QStringList(tr(u8"192.168.2.12")));
-    connect(treekView_, SIGNAL(doubleClicked(const QModelIndex &)),this, SLOT(queryResource(const QModelIndex &)) );
+    connect(treeView_, SIGNAL(doubleClicked(const QModelIndex &)),this, SLOT(queryResource(const QModelIndex &)) );
 }
 
 Server::Server()

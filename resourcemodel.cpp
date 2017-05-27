@@ -1,6 +1,7 @@
 #include "resourcemodel.h"
 #include<QModelIndex>
 #include<QVector>
+#include "querythread.h"
 
 ServerResourceModel::ServerResourceModel(const QStringList &headers, const QStringList &datas,
                                          QObject *parent):
@@ -12,6 +13,18 @@ ServerResourceModel::ServerResourceModel(const QStringList &headers, const QStri
     {
         setupModelData(datas);
     }
+//    queryThread_ = new QueryThread;
+
+//    connect(queryThread_, SIGNAL(dataReady(const rmi::server_collect_info &)),
+//            this, SLOT(updaData(const rmi::server_collect_info&)));
+
+//    connect(queryThread_, SIGNAL(dataReady(const rmi::switch_collect_info &)),
+//            this, SLOT(updaData(const rmi::switch_collect_info&)));
+}
+
+ServerResourceModel::~ServerResourceModel()
+{
+    //delete queryThread_;
 }
 
 void ServerResourceModel::initialize()
@@ -82,4 +95,44 @@ QVariant ServerResourceModel::headerData(int section, Qt::Orientation orientatio
          return QVariant();
      }
 
+}
+
+void ServerResourceModel::updaData(const rmi::server_collect_info &serverinfo)
+{
+    rmi::capability cap = serverinfo.top();
+    std::list<rmi::user> users = serverinfo.who();
+    std::list<rmi::process> processes = serverinfo.ps();
+
+    QStringList capdata;
+    capdata<<QString("%1#%2#%3").arg(cap.cpu() ).arg(cap.memory()).arg(cap.disk());
+    updateData(capdata);
+
+    QStringList userData;
+    for(auto user : users)
+    {
+        userData<<QString("%1#%2").arg( QString::fromUtf8(user.name().c_str()) ).arg(QString::fromUtf8(user.time().c_str()));
+    }
+    updateData(userData);
+
+    QStringList processData;
+    for(auto process:processes)
+    {
+        processData<<QString("%1#%2#%3").arg(process.id()).arg( QString::fromUtf8(process.name().c_str()) ).arg( QString::fromUtf8(process.path().c_str()) );
+    }
+    updateData(processData);
+}
+
+void ServerResourceModel::updaData(const rmi::switch_collect_info &switchInfo)
+{
+    std::list<rmi::flow> flows = switchInfo.ifconfig();
+    QStringList switchData;
+    for(auto flow:flows)
+    {
+        switchData<<QString("%1#%2#%3#%4").arg(flow.in()).arg( flow.out() ).arg( flow.loss() ).arg( flow.error() );
+    }
+
+//            switchData<<"111#222#333#1";
+//            switchData<<"444#555#666#1";
+
+    updateData(switchData);
 }

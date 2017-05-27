@@ -61,9 +61,9 @@ private:
      QueryPage * queryPage_;
      ControlPage *controlPage_;
      QLabel *statusbarLabel_;
-     QTreeWidget *treekWidget_;
+    // QTreeWidget *treekWidget_;
      QTreeWidgetItem * treeHeader_;
-     QTreeView * treekView_;
+     QTreeView * treeView_;
      TreeModel *treeModel_;
      QToolBar *toolBar_;
      QAction * showAction_;

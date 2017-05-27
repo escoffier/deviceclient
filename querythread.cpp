@@ -1,4 +1,4 @@
-#include "querythread.h"
+﻿#include "querythread.h"
 #include "ap.hpp"
 #include <QDebug>
 QueryThread::QueryThread()
@@ -8,7 +8,8 @@ QueryThread::QueryThread()
     //rmiClient_->start("192.168.31.150", 10001);
     threadEnd_ = false;
     connected_ = false;
-    start();
+
+    //start();
     qDebug()<<"QueryThread";
 }
 
@@ -21,15 +22,17 @@ QueryThread::QueryThread(const QString &device, int type)
     //rmiClient_->start("192.168.31.150", 10001);
     threadEnd_ = false;
     connected_ = false;
-    start();
+    //start();
 }
 
 QueryThread::~QueryThread()
 {
+     threadEnd_.store(true);
     {
         QMutexLocker locker(&mutex_);
-        //deviceName_.clear();
-        threadEnd_ = true;
+
+        rmiClient_->stop();
+        delete rmiClient_;
         waitCondition_.wakeOne();
     }
     wait();
@@ -37,99 +40,100 @@ QueryThread::~QueryThread()
 
 void QueryThread::setDeivce(const QString &name, int type)
 {
+
     QMutexLocker locker(&mutex_);
     deviceName_ = name;
     type_ = type;
-    waitCondition_.wakeOne();
+    if(!isRunning())
+        start();
+    else
+        waitCondition_.wakeOne();
 
 }
 
 void QueryThread::setServer(const QString &ip, const QString &port)
 {
-    QMutexLocker locker(&mutex_);
+   QMutexLocker locker(&mutex_);
+   qDebug()<<"QueryThread::setServer "<<ip_;
     ip_ = ip;
     port_ = port;
     connected_ = false;
-    waitCondition_.wakeOne();
+
+    //服务器发送变化，停止资源占有数据的更新
+    deviceName_.clear();
 }
 
 void QueryThread::run()
 {
 
-    while(!threadEnd_)
+    while(!threadEnd_.load())
     {
-        QMutexLocker locker(&mutex_);
-        qDebug()<<"QueryThread: "<<deviceName_<<"--"<<type_;
-//        if(threadEnd_)
-//        {
-//            qDebug()<<"QueryThread end thread";
-//            break;
-//        }
+        int curType;
+        QString curName;
 
-        if(!connected_)
         {
+            QMutexLocker locker(&mutex_);
+            qDebug()<<"QueryThread: "<<deviceName_<<"--"<<type_;
+
+            //bool isConnect = connected_;
             if(ip_.isEmpty() || port_.isEmpty())
             {
                 waitCondition_.wait(&mutex_);
             }
-            rmiClient_->start(ip_.toUtf8().constData(), port_.toInt());
-            qDebug()<<"connected to server";
-            connected_ = true;
+
+            if(!connected_)
+            {
+                rmiClient_->start(ip_.toUtf8().constData(), port_.toInt());
+                qDebug()<<"connected to server";
+                connected_ = true;
+            }
+
+            //设备类型不正确或者设备名为空，阻塞线程
+            if( (type_ != 4 && type_ != 5) || deviceName_.isEmpty() )
+            {
+                qDebug()<<"QueryThread waiting ";
+                waitCondition_.wait(&mutex_);
+            }
+
+            curType = type_;
+            curName = deviceName_;
         }
-        //设备类型不正确或者设备名为空，阻塞线程
-        if( (type_ != 4 && type_ != 5) || deviceName_.isEmpty() )
+
+        if(curType == 4)
         {
-            qDebug()<<"QueryThread waiting ";
-            waitCondition_.wait(&mutex_);
-        }
+            try
+            {
+                rmi::server_collect_info serverinfo;
+                qDebug()<<"Query device: "<<curName;
+                rmiClient_->get(curName.toUtf8().constData(), serverinfo);
 
-        if(type_ == 4)
+                emit dataReady(serverinfo);
+            }
+            catch(std::exception &e)
+            {
+                qDebug()<<e.what();
+            }
+        }
+        else if(curType == 5)
         {
-            rmi::server_collect_info serverinfo;
+            try
+            {
+                rmi::switch_collect_info switchInfo;
+                rmiClient_->get(curName.toUtf8().constData(), switchInfo);
 
-
-            rmiClient_->get(deviceName_.toUtf8().constData(), serverinfo);
-
-            emit dataReady(serverinfo);
+                emit dataReady(switchInfo);
+            }
+            catch(std::exception &e)
+            {
+                qDebug()<<e.what();
+            }
         }
-        else if(type_ == 5)
+
+        //3s更新一次数据
         {
-            rmi::switch_collect_info switchInfo;
-            rmiClient_->get(deviceName_.toUtf8().constData(), switchInfo);
-
-            emit dataReady(switchInfo);
-//            std::list<rmi::flow> flows = switchInfo.ifconfig();
-//            QStringList switchData;
-//            for(auto flow:flows)
-//            {
-//                switchData<<QString("%1#%2#%3#%4").arg(flow.in()).arg( flow.out() ).arg( flow.loss() ).arg( flow.error() );
-//            }
-
-//            switchData<<"111#222#333#1";
-//            switchData<<"444#555#666#1";
-
-
+            QMutexLocker locker(&mutex_);
+            waitCondition_.wait(&mutex_, 3000);
+            qDebug()<<"QueryThread end thread";
         }
-//        rmi::capability cap = serverinfo.top();
-//        std::list<rmi::user> users = serverinfo.who();
-//        std::list<rmi::process> processes = serverinfo.ps();
-
-//        QStringList capdata;
-//        capdata<<QString("%1#%2#%3").arg(cap.cpu() ).arg(cap.memory()).arg(cap.disk());
-
-//        QStringList userData;
-//        for(auto user : users)
-//        {
-//            userData<<QString("%1#%2").arg( QString::fromUtf8(user.name().c_str()) ).arg(QString::fromUtf8(user.time().c_str()));
-//        }
-//        //serverUserModel_->updateData(userData);
-
-//        QStringList processData;
-//        for(auto process:processes)
-//        {
-//            processData<<QString("%1#%2#%3").arg(process.id()).arg( QString::fromUtf8(process.name().c_str()) ).arg( QString::fromUtf8(process.path().c_str()) );
-//        }
-
     }
-     qDebug()<<"QueryThread end thread";
 }

@@ -5,6 +5,7 @@
 //#include <treeitem.h>
 #include <QMutex>
 #include<QWaitCondition>
+#include<atomic>
 
 class QueryThread : public QThread
 {
@@ -32,7 +33,7 @@ private:
      QString port_;
      QMutex mutex_;
      QWaitCondition waitCondition_;
-     bool threadEnd_;
+     std::atomic_bool threadEnd_;
      bool connected_;
 };
 #endif // QUERYTHREAD_H

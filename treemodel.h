@@ -100,16 +100,19 @@ public:
 
     void setupModelData(const QStringList &lines, TreeItem *parent);
     void updateModelData(const QStringList &datas);
+
     void setCentralServer(const QStringList &datas);
     void queryDevice(const QString& ip, const QString& port);
     TreeItem *rootItem() const;
-
+public slots:
+    void updateModelData(const QMap<QString, QStringList>& datas);
 private:
 
     TreeItem *getItem(const QModelIndex &index) const;
 
     TreeItem *rootItem_;
     TreeThread * queryThread_;
+    QIcon * serverIcon_;
     //;
 };
 //! [2]
